@@ -66,6 +66,23 @@ def init_db():
             created_at TEXT DEFAULT (datetime('now','localtime'))
         )
     """)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS conteudos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            evento_id TEXT UNIQUE,
+            legenda_instagram TEXT DEFAULT '',
+            legenda_facebook  TEXT DEFAULT '',
+            legenda_tiktok    TEXT DEFAULT '',
+            legenda_kwai      TEXT DEFAULT '',
+            titulo_youtube    TEXT DEFAULT '',
+            descricao_youtube TEXT DEFAULT '',
+            roteiro_reel      TEXT DEFAULT '',
+            slides_carrossel  TEXT DEFAULT '',
+            imagem_path       TEXT DEFAULT '',
+            status            TEXT DEFAULT 'gerado',
+            created_at        TEXT DEFAULT (datetime('now','localtime'))
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -91,6 +108,39 @@ def set_cache(raw_key: str, result: dict):
     )
     conn.commit()
     conn.close()
+
+
+def salvar_conteudo(evento_id, resultado: dict):
+    conn = get_conn()
+    conn.execute("""
+        INSERT OR REPLACE INTO conteudos
+        (evento_id, legenda_instagram, legenda_facebook, legenda_tiktok, legenda_kwai,
+         titulo_youtube, descricao_youtube, roteiro_reel, slides_carrossel, imagem_path, status)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?)
+    """, (
+        str(evento_id) if evento_id else None,
+        resultado.get("legenda_instagram", ""),
+        resultado.get("legenda_facebook", ""),
+        resultado.get("legenda_tiktok", ""),
+        resultado.get("legenda_kwai", ""),
+        resultado.get("titulo_youtube", ""),
+        resultado.get("descricao_youtube", ""),
+        resultado.get("roteiro_reel", ""),
+        resultado.get("slides_carrossel", ""),
+        resultado.get("imagem_path", ""),
+        "gerado",
+    ))
+    conn.commit()
+    conn.close()
+
+
+def get_conteudo_por_evento(evento_id: str) -> dict | None:
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT * FROM conteudos WHERE evento_id=?", (evento_id,)
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
 
 
 def save_game(game: dict):

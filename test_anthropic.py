@@ -11,7 +11,7 @@ if not api_key:
 
 client = anthropic.Anthropic(api_key=api_key)
 r = client.messages.create(
-    model="claude-haiku-3-5-20251001",
+    model="claude-haiku-4-5-20251001",
     max_tokens=100,
     messages=[{"role": "user", "content": "Responda só: API Anthropic funcionando para esportes_mundo_social!"}]
 )

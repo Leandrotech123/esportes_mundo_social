@@ -8,7 +8,6 @@ scheduler = BlockingScheduler(timezone="America/Sao_Paulo")
 def run_cycle():
     from core.fetcher import fetch_all
     from core.processor import process_and_queue
-    from core.ai_generator import generate_caption
     from core.asset_creator import create_post_image
     from database import get_queue, update_queue_item
 
@@ -16,15 +15,15 @@ def run_cycle():
     data = fetch_all()
     count = process_and_queue(data)
 
+    # Gera imagens para itens que ainda não têm
     if count > 0:
-        pending = get_queue("pending")
-        for item in pending[:8]:
-            if not item.get("generated_text"):
+        gerados = get_queue("gerado")
+        for item in gerados[:8]:
+            if not item.get("image_path"):
                 raw = json.loads(item.get("raw_data") or "{}")
-                text = generate_caption(item["type"], raw, item["platform"])
                 path = create_post_image({**item, "raw_data": raw})
-                update_queue_item(item["id"], {"generated_text": text, "image_path": path})
-                print(f"[SCHEDULER]   ✓ Item {item['id']}: {(item['title'] or '')[:45]}")
+                update_queue_item(item["id"], {"image_path": path})
+                print(f"[SCHEDULER]   🖼 Imagem: {(item['title'] or '')[:45]}")
 
     print(f"[SCHEDULER] ■ Ciclo concluído")
 

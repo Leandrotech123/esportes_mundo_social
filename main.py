@@ -3,7 +3,7 @@ Esportes Mundo Social — Sistema de automação de conteúdo
 Uso: python main.py <comando>
 """
 import sys
-import os
+import json
 
 
 def cmd_fetch():
@@ -14,20 +14,34 @@ def cmd_fetch():
 
 
 def cmd_generate():
-    import json
-    from core.ai_generator import generate_caption
+    """Gera conteúdo para itens ainda pendentes (fallback)."""
+    from core.ai_generator import AIGenerator
     from core.asset_creator import create_post_image
     from database import get_queue, update_queue_item
 
     pending = get_queue("pending")
+    if not pending:
+        print("[MAIN] Nenhum item pendente.")
+        return
+
     print(f"[MAIN] Gerando para {len(pending)} item(s)...")
+    ai = AIGenerator()
     for item in pending:
-        if not item.get("generated_text"):
-            raw = json.loads(item.get("raw_data") or "{}")
-            text = generate_caption(item["type"], raw, item["platform"])
-            path = create_post_image({**item, "raw_data": raw})
-            update_queue_item(item["id"], {"generated_text": text, "image_path": path})
-            print(f"  ✓ [{item['id']}] {(item['title'] or '')[:55]}")
+        raw = json.loads(item.get("raw_data") or "{}")
+        evento = {
+            "event_id": item.get("event_id"),
+            "title":    item.get("title", ""),
+            "league":   item.get("league", ""),
+            **raw,
+        }
+        resultado = ai.gerar_conteudo_completo(evento)
+        path = create_post_image({**item, "raw_data": raw})
+        update_queue_item(item["id"], {
+            "status": "gerado",
+            "generated_text": resultado.get("legenda_instagram", ""),
+            "image_path": path,
+        })
+        print(f"  ✓ [{item['id']}] {(item['title'] or '')[:55]}")
 
 
 def cmd_dashboard():
@@ -48,11 +62,7 @@ def cmd_run():
     import uvicorn
     from dashboard.app import app
 
-    def pipeline():
-        cmd_fetch()
-        cmd_generate()
-
-    t = threading.Thread(target=pipeline, daemon=True)
+    t = threading.Thread(target=lambda: (cmd_fetch(), cmd_generate()), daemon=True)
     t.start()
     t.join()
 
@@ -61,8 +71,8 @@ def cmd_run():
 
 
 COMMANDS = {
-    "fetch":     (cmd_fetch,     "Busca jogos e notícias das APIs"),
-    "generate":  (cmd_generate,  "Gera legendas e imagens para itens na fila"),
+    "fetch":     (cmd_fetch,     "Busca jogos e notícias e gera conteúdo automaticamente"),
+    "generate":  (cmd_generate,  "Processa itens pendentes na fila (fallback)"),
     "dashboard": (cmd_dashboard, "Abre o painel de aprovação (localhost:8000)"),
     "schedule":  (cmd_schedule,  "Inicia o agendador automático"),
     "run":       (cmd_run,       "Pipeline completo (fetch + generate + painel)"),

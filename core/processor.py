@@ -1,4 +1,4 @@
-from database import add_to_queue
+from database import add_to_queue, update_queue_item
 
 LEAGUE_EMOJI = {
     "bra.1": "🇧🇷",
@@ -105,12 +105,38 @@ def process_and_queue(data: dict) -> int:
     pieces = classify_games(games) + classify_news(news)
     pieces.sort(key=lambda x: x["priority"], reverse=True)
 
-    added = 0
+    added_items = []
     for p in pieces:
-        add_to_queue(p)
-        added += 1
+        qid = add_to_queue(p)
+        added_items.append({"qid": qid, **p})
+
+    if added_items:
+        try:
+            from core.ai_generator import AIGenerator
+            ai = AIGenerator()
+            for i in range(0, len(added_items), 5):
+                batch = added_items[i:i + 5]
+                for item in batch:
+                    raw = item.get("raw_data", {})
+                    evento = {
+                        "event_id": item.get("event_id"),
+                        "title":    item.get("title", ""),
+                        "league":   item.get("league", ""),
+                        **raw,
+                    }
+                    try:
+                        resultado = ai.gerar_conteudo_completo(evento)
+                        update_queue_item(item["qid"], {
+                            "status": "gerado",
+                            "generated_text": resultado.get("legenda_instagram", ""),
+                        })
+                        print(f"[PROCESSOR] ✓ {(item.get('title', ''))[:50]}")
+                    except Exception as e:
+                        print(f"[PROCESSOR] ✗ Erro ao gerar conteúdo: {e}")
+        except Exception as e:
+            print(f"[PROCESSOR] AIGenerator indisponível: {e}")
 
     live = sum(1 for g in games if g.get("status") == "live")
     finished = sum(1 for g in games if g.get("status") == "finished")
-    print(f"[PROCESSOR] {added} itens na fila | {live} ao vivo | {finished} encerrados")
-    return added
+    print(f"[PROCESSOR] {len(added_items)} itens na fila | {live} ao vivo | {finished} encerrados")
+    return len(added_items)
