@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block head %}
+<style>
+  .stats-bar {
+    display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 28px;
+  }
+  .stat-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 20px; flex: 1; min-width: 120px;
+    text-align: center;
+  }
+  .stat-box .n { font-size: 2rem; font-weight: 800; color: var(--accent); }
+  .stat-box .label { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+
+  .games-strip {
+    display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 28px;
+  }
+  .game-pill {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 16px; font-size: 0.82rem;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .game-pill .score { font-weight: 800; color: var(--accent); }
+  .game-pill .live-dot {
+    width: 8px; height: 8px; background: #ff4b4b;
+    border-radius: 50%; animation: pulse 1.2s infinite;
+    flex-shrink: 0;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+  }
+  .card-img {
+    height: 190px; overflow: hidden; background: var(--bg);
+    cursor: pointer; position: relative;
+  }
+  .card-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .card-img .no-img {
+    height: 100%; display: flex; align-items: center; justify-content: center;
+    color: var(--border); font-size: 2.5rem;
+  }
+  .card-body { padding: 14px; flex: 1; display: flex; flex-direction: column; gap: 10px; }
+  .card-meta { display: flex; gap: 6px; flex-wrap: wrap; }
+  .card-title { font-weight: 700; font-size: 0.92rem; line-height: 1.3; }
+  .card-caption {
+    background: var(--bg); border-radius: 8px; padding: 10px;
+    font-size: 0.78rem; color: var(--muted); line-height: 1.5;
+    max-height: 72px; overflow: hidden; position: relative;
+  }
+  .card-caption::after {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+    height: 24px; background: linear-gradient(transparent, var(--bg));
+  }
+  .card-time { font-size: 0.72rem; color: var(--border); }
+  .card-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Stats -->
+<div class="stats-bar">
+  <div class="stat-box">
+    <div class="n">{{ stats.get('pending', 0) }}</div>
+    <div class="label">Pendentes</div>
+  </div>
+  <div class="stat-box">
+    <div class="n" style="color:var(--green)">{{ stats.get('approved', 0) }}</div>
+    <div class="label">Aprovados</div>
+  </div>
+  <div class="stat-box">
+    <div class="n" style="color:var(--blue)">{{ stats.get('published', 0) }}</div>
+    <div class="label">Publicados</div>
+  </div>
+  <div class="stat-box">
+    <div class="n" style="color:var(--red)">{{ stats.get('rejected', 0) }}</div>
+    <div class="label">Rejeitados</div>
+  </div>
+  <div class="stat-box">
+    <div class="n" style="color:var(--yellow)">{{ games|length }}</div>
+    <div class="label">Jogos Hoje</div>
+  </div>
+</div>
+
+<!-- Jogos do dia -->
+{% if games %}
+<div class="section-title">📅 Jogos de Hoje</div>
+<div class="games-strip" style="margin-bottom:32px">
+  {% for g in games %}
+  <div class="game-pill">
+    {% if g.status == 'live' %}<span class="live-dot"></span>{% endif %}
+    <span>{{ g.home_team[:10] }}</span>
+    <span class="score">{{ g.home_score }} × {{ g.away_score }}</span>
+    <span>{{ g.away_team[:10] }}</span>
+    {% if g.status == 'live' %}
+      <span class="badge badge-live">AO VIVO</span>
+    {% elif g.status == 'finished' %}
+      <span class="badge badge-finished">FIM</span>
+    {% else %}
+      <span class="badge badge-sched">{{ g.start_time[11:16] if g.start_time|length > 10 else '' }}</span>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Fila -->
+<div class="section-title">
+  📋 Fila de Aprovação
+  <span class="count">{{ queue|length }}</span>
+</div>
+
+{% if not queue %}
+<div class="empty-state">
+  <div class="icon">📭</div>
+  <p>Nenhum conteúdo pendente.</p>
+  <p style="margin-top:8px;font-size:0.9rem">Clique em <strong>🔄 Buscar Agora</strong> para coletar novos posts.</p>
+</div>
+{% else %}
+<div class="grid">
+  {% for item in queue %}
+  <div class="card">
+    <div class="card-img">
+      {% if item.image_path %}
+        <img src="/image/{{ item.id }}" alt="preview" loading="lazy">
+      {% else %}
+        <div class="no-img">🖼️</div>
+      {% endif %}
+    </div>
+    <div class="card-body">
+      <div class="card-meta">
+        <span class="badge badge-type">{{ item.type }}</span>
+        <span class="badge" style="background:#1a1035;color:#bb86fc">{{ item.platform }}</span>
+        {% if item.league %}
+        <span class="badge badge-league">{{ item.league }}</span>
+        {% endif %}
+      </div>
+      <div class="card-title">{{ item.title or 'Sem título' }}</div>
+      <div class="card-caption">
+        {% if item.generated_text %}
+          {{ item.generated_text }}
+        {% else %}
+          <em>Legenda ainda não gerada</em>
+        {% endif %}
+      </div>
+      <div class="card-time">{{ item.created_at }}</div>
+      <div class="card-actions">
+        <form method="post" action="/approve/{{ item.id }}">
+          <button class="btn btn-approve btn-sm">✓ Aprovar</button>
+        </form>
+        <form method="post" action="/reject/{{ item.id }}">
+          <button class="btn btn-reject btn-sm">✗ Rejeitar</button>
+        </form>
+        <a href="/edit/{{ item.id }}" class="btn btn-edit btn-sm">✎ Editar</a>
+        <form method="post" action="/regenerate/{{ item.id }}">
+          <button class="btn btn-regen btn-sm" title="Regenerar com IA">⟳</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
