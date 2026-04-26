@@ -6,3 +6,5 @@ outputs/
 assets/
 esportes.db
 *.db
+logs/
+!logs/.gitkeep

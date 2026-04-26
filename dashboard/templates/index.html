@@ -64,6 +64,25 @@
   .platforms-icons { font-size: 0.9rem; display: flex; gap: 3px; flex-wrap: wrap; margin-top: 4px; }
   .sched-time { font-size: 0.72rem; color: var(--accent); margin-top: 4px; }
   .section-agendados { margin-top: 36px; }
+
+  /* bulk actions */
+  .bulk-bar {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;
+  }
+  .bulk-bar label { display: flex; align-items: center; gap: 8px;
+    font-size: 0.85rem; cursor: pointer; user-select: none; }
+  .bulk-bar input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+  .bulk-spacer { flex: 1; }
+  .card-cb-wrap {
+    position: absolute; top: 10px; left: 10px; z-index: 10;
+  }
+  .card-cb-wrap input[type=checkbox] {
+    width: 20px; height: 20px; accent-color: var(--accent);
+    cursor: pointer; border-radius: 4px;
+  }
+  .card.selected { outline: 2px solid var(--accent); }
 </style>
 {% endblock %}
 
@@ -121,6 +140,21 @@
   <span class="count">{{ queue|length }}</span>
 </div>
 
+{% if queue %}
+<div class="bulk-bar" id="bulkBar">
+  <label>
+    <input type="checkbox" id="selectAll"> Selecionar todos
+  </label>
+  <div class="bulk-spacer"></div>
+  <button class="btn btn-approve btn-sm" id="btnAprovarLote" onclick="enviarLote('aprovar')">
+    + Aprovar Selecionados (0)
+  </button>
+  <button class="btn btn-reject btn-sm" id="btnRejeitarLote" onclick="enviarLote('rejeitar')">
+    x Rejeitar Selecionados (0)
+  </button>
+</div>
+{% endif %}
+
 {% if not queue %}
 <div class="empty-state">
   <div class="icon">📭</div>
@@ -130,8 +164,12 @@
 {% else %}
 <div class="grid">
   {% for item in queue %}
-  <div class="card">
-    <div class="card-img">
+  <div class="card" data-id="{{ item.id }}">
+    <div class="card-img" style="position:relative">
+      <div class="card-cb-wrap">
+        <input type="checkbox" class="item-cb" value="{{ item.id }}"
+               onchange="atualizarContagem()">
+      </div>
       {% if item.image_path %}
         <img src="/image/{{ item.id }}" alt="preview" loading="lazy">
       {% else %}
@@ -208,4 +246,47 @@
   </div>
 </div>
 {% endif %}
+
+<script>
+function atualizarContagem() {
+  const cbs = document.querySelectorAll('.item-cb');
+  const marcados = [...cbs].filter(c => c.checked);
+  const n = marcados.length;
+
+  const btnA = document.getElementById('btnAprovarLote');
+  const btnR = document.getElementById('btnRejeitarLote');
+  if (btnA) btnA.textContent = `+ Aprovar Selecionados (${n})`;
+  if (btnR) btnR.textContent = `x Rejeitar Selecionados (${n})`;
+
+  document.querySelectorAll('.card[data-id]').forEach(card => {
+    const cb = card.querySelector('.item-cb');
+    card.classList.toggle('selected', cb && cb.checked);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const selectAll = document.getElementById('selectAll');
+  if (selectAll) {
+    selectAll.addEventListener('change', () => {
+      document.querySelectorAll('.item-cb').forEach(cb => {
+        cb.checked = selectAll.checked;
+      });
+      atualizarContagem();
+    });
+  }
+});
+
+async function enviarLote(acao) {
+  const ids = [...document.querySelectorAll('.item-cb:checked')].map(c => parseInt(c.value));
+  if (ids.length === 0) { alert('Selecione ao menos um item.'); return; }
+  const rota = acao === 'aprovar' ? '/aprovar-lote' : '/rejeitar-lote';
+  const res = await fetch(rota, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  });
+  if (res.ok) location.reload();
+  else alert('Erro ao processar lote.');
+}
+</script>
 {% endblock %}

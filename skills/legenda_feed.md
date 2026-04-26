@@ -1,3 +1,12 @@
+REGRAS OBRIGATÓRIAS — NUNCA VIOLAR:
+- NUNCA chame de clássico times de estados diferentes
+- Atlético-MG é Minas Gerais, Flamengo é Rio de Janeiro = NÃO É CLÁSSICO
+- Clássicos reais: Fla x Flu, Atletico x Cruzeiro, Corinthians x Palmeiras, Real x Barça, Milan x Inter
+- NUNCA diga "decisão" ou "guerra" em jogos de rodada comum
+- NUNCA invente rivalidades
+- Se o jogo for hoje use "HOJE", se for futuro use a data real
+- Tom proporcional ao peso do jogo: jogo comum = animado, final = épico
+
 Gere uma legenda para Instagram e Facebook sobre este evento esportivo.
 
 Evento: {titulo}

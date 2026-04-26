@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI, Request, Form
-from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from database import get_queue, get_queue_item, update_queue_item, get_games_today, get_all_queue_stats
@@ -110,6 +110,29 @@ async def regenerate(item_id: int):
         path = create_post_image({**item, "raw_data": raw})
         update_queue_item(item_id, {"generated_text": text, "image_path": path})
     return RedirectResponse("/", status_code=303)
+
+
+@app.post("/aprovar-lote")
+async def aprovar_lote(request: Request):
+    body = await request.json()
+    ids = body.get("ids", [])
+    sched = (datetime.now() + timedelta(minutes=15)).strftime("%Y-%m-%dT%H:%M")
+    for item_id in ids:
+        update_queue_item(int(item_id), {
+            "status": "approved",
+            "scheduled_at": sched,
+            "platforms": json.dumps(DEFAULT_PLATFORMS),
+        })
+    return JSONResponse({"ok": True, "aprovados": len(ids)})
+
+
+@app.post("/rejeitar-lote")
+async def rejeitar_lote(request: Request):
+    body = await request.json()
+    ids = body.get("ids", [])
+    for item_id in ids:
+        update_queue_item(int(item_id), {"status": "rejected"})
+    return JSONResponse({"ok": True, "rejeitados": len(ids)})
 
 
 @app.get("/history", response_class=HTMLResponse)
