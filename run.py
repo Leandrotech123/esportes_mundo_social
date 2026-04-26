@@ -2,9 +2,13 @@
 run.py — Ponto de entrada do sistema EsportesMundo Social
 Uso: python run.py
 """
+import os
 import threading
 import uvicorn
+from dotenv import load_dotenv
 from database import init_db
+
+load_dotenv()
 
 BANNER = """
 ╔══════════════════════════════════════════════════════════╗
@@ -30,9 +34,42 @@ def _run_scheduler():
     start()
 
 
+def _start_ngrok():
+    ngrok_token = os.getenv("NGROK_AUTHTOKEN")
+    if not ngrok_token:
+        return
+    try:
+        from pyngrok import ngrok as pyngrok_tunnel
+        pyngrok_tunnel.set_auth_token(ngrok_token)
+        tunnel = pyngrok_tunnel.connect(8000)
+        print(f"\n URL EXTERNA (acesso de qualquer lugar):")
+        print(f" {tunnel.public_url}")
+        print(f" Compartilhe esse link para acessar de qualquer rede!\n")
+    except Exception as e:
+        print(f"[NGROK] Erro ao iniciar tunnel: {e}")
+
+
+def _mostrar_ip_local():
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+    except Exception:
+        ip = "127.0.0.1"
+    print(f"\n{'='*50}")
+    print(f" Acesse pelo celular (mesma rede WiFi):")
+    print(f" http://{ip}:8000")
+    print(f"{'='*50}\n")
+
+
 def main():
     init_db()
     print(BANNER)
+
+    _mostrar_ip_local()
+    _start_ngrok()
 
     t = threading.Thread(target=_run_scheduler, daemon=True, name="scheduler")
     t.start()
