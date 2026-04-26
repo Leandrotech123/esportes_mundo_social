@@ -2,12 +2,21 @@ import os
 import json
 import shutil
 import requests
+import cloudinary
+import cloudinary.uploader
 from datetime import datetime
 from config import (
     INSTAGRAM_TOKEN, INSTAGRAM_ACCOUNT_ID,
     FACEBOOK_PAGE_ID, YOUTUBE_API_KEY, OUTPUTS_DIR,
+    CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET,
 )
 from database import update_queue_item, get_approved_ready
+
+cloudinary.config(
+    cloud_name=CLOUDINARY_CLOUD_NAME,
+    api_key=CLOUDINARY_API_KEY,
+    api_secret=CLOUDINARY_API_SECRET,
+)
 
 ALL_PLATFORMS = ["instagram", "facebook", "youtube", "tiktok", "kwai"]
 
@@ -20,12 +29,23 @@ PLATFORM_ICONS = {
 }
 
 
+# ─── Cloudinary ──────────────────────────────────────────────────────────────
+
+def upload_imagem_publica(caminho_local: str) -> str:
+    """Faz upload da imagem local para o Cloudinary e retorna a URL pública."""
+    result = cloudinary.uploader.upload(caminho_local, folder="esportes_mundo")
+    return result["secure_url"]
+
+
 # ─── Instagram ───────────────────────────────────────────────────────────────
 
-def publish_instagram(image_url: str, caption: str) -> dict:
+def publish_instagram(image_path: str, caption: str) -> dict:
     if not INSTAGRAM_TOKEN or not INSTAGRAM_ACCOUNT_ID:
         return {"success": False, "error": "Credenciais Instagram nao configuradas no .env"}
+    if not image_path or not os.path.exists(image_path):
+        return {"success": False, "error": "Sem imagem local para upload"}
     try:
+        image_url = upload_imagem_publica(image_path)
         r = requests.post(
             f"https://graph.facebook.com/v19.0/{INSTAGRAM_ACCOUNT_ID}/media",
             data={"image_url": image_url, "caption": caption, "access_token": INSTAGRAM_TOKEN},
@@ -52,6 +72,8 @@ def publish_facebook(image_path: str, caption: str) -> dict:
     token = META_ACCESS_TOKEN or INSTAGRAM_TOKEN
     if not token or not FACEBOOK_PAGE_ID:
         return {"success": False, "error": "Credenciais Facebook nao configuradas no .env"}
+    if not image_path or not os.path.exists(image_path):
+        return {"success": False, "error": "Sem imagem local para upload"}
     try:
         with open(image_path, "rb") as f:
             r = requests.post(
@@ -61,7 +83,9 @@ def publish_facebook(image_path: str, caption: str) -> dict:
                 timeout=30,
             )
         result = r.json()
-        return {"success": "id" in result, "result": result}
+        if "id" in result:
+            return {"success": True, "result": result}
+        return {"success": False, "error": result.get("error", result)}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -122,13 +146,10 @@ def _publicar_item(item: dict):
 
     for plat in platforms:
         if plat == "instagram":
-            results["instagram"] = {"success": False, "error": "Requer URL publica (CDN/ngrok)"}
+            results["instagram"] = publish_instagram(image_path, caption)
 
         elif plat == "facebook":
-            if image_path and os.path.exists(image_path):
-                results["facebook"] = publish_facebook(image_path, caption)
-            else:
-                results["facebook"] = {"success": False, "error": "Sem imagem local"}
+            results["facebook"] = publish_facebook(image_path, caption)
 
         elif plat == "youtube":
             results["youtube"] = export_for_youtube(item, caption)
@@ -159,6 +180,9 @@ def publicar_aprovados():
                 "published_at": datetime.now().isoformat(),
             })
             print(f"[PUBLISHER] Item {item['id']} publicado | ok={ok} | falhou={fail}")
+            for plat, r in results.items():
+                if not r.get("success"):
+                    print(f"  [{plat}] erro: {r.get('error')}")
         except Exception as e:
             print(f"[PUBLISHER] Erro item {item['id']}: {e}")
 

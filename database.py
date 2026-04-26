@@ -97,11 +97,13 @@ def init_db():
 def get_approved_ready() -> list:
     """Retorna itens aprovados cujo scheduled_at já chegou."""
     conn = get_conn()
+    # replace(scheduled_at, 'T', ' ') normaliza formato ISO 8601 (com T) para
+    # o formato do SQLite (com espaço), evitando comparação de string incorreta
     rows = conn.execute("""
         SELECT * FROM content_queue
         WHERE status = 'approved'
           AND scheduled_at IS NOT NULL
-          AND scheduled_at <= datetime('now', 'localtime')
+          AND replace(scheduled_at, 'T', ' ') <= datetime('now', 'localtime')
         ORDER BY scheduled_at ASC
     """).fetchall()
     conn.close()

@@ -60,9 +60,9 @@ async def trigger_fetch():
 @app.post("/approve/{item_id}")
 async def approve(item_id: int, scheduled_at: str = Form(default="")):
     if scheduled_at:
-        sched = scheduled_at  # datetime-local: "2026-04-26T14:30"
+        sched = scheduled_at.replace("T", " ")
     else:
-        sched = (datetime.now() + timedelta(minutes=15)).strftime("%Y-%m-%dT%H:%M")
+        sched = (datetime.now() + timedelta(minutes=15)).strftime("%Y-%m-%d %H:%M")
     update_queue_item(item_id, {
         "status": "approved",
         "scheduled_at": sched,
@@ -116,7 +116,7 @@ async def regenerate(item_id: int):
 async def aprovar_lote(request: Request):
     body = await request.json()
     ids = body.get("ids", [])
-    sched = (datetime.now() + timedelta(minutes=15)).strftime("%Y-%m-%dT%H:%M")
+    sched = (datetime.now() + timedelta(minutes=15)).strftime("%Y-%m-%d %H:%M")
     for item_id in ids:
         update_queue_item(int(item_id), {
             "status": "approved",
