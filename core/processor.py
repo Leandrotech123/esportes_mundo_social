@@ -130,11 +130,12 @@ def process_and_queue(data: dict) -> int:
                             "status": "gerado",
                             "generated_text": resultado.get("legenda_instagram", ""),
                         })
-                        print(f"[PROCESSOR] ✓ {(item.get('title', ''))[:50]}")
+                        title_log = (item.get('title', ''))[:50].encode('ascii', 'replace').decode()
+                        print(f"[PROCESSOR] OK {title_log}")
                     except Exception as e:
-                        print(f"[PROCESSOR] ✗ Erro ao gerar conteúdo: {e}")
+                        print(f"[PROCESSOR] ERRO ao gerar conteudo: {e}")
         except Exception as e:
-            print(f"[PROCESSOR] AIGenerator indisponível: {e}")
+            print(f"[PROCESSOR] AIGenerator indisponivel: {e}")
 
     live = sum(1 for g in games if g.get("status") == "live")
     finished = sum(1 for g in games if g.get("status") == "finished")

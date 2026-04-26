@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 ANTHROPIC_API_KEY    = os.getenv("ANTHROPIC_API_KEY", "")
+BALLDONTLIE_API_KEY  = os.getenv("BALLDONTLIE_API_KEY", "")
 FOOTBALL_DATA_KEY    = os.getenv("API_FOOTBALL_KEY", "")
 NEWS_API_KEY         = os.getenv("NEWS_API_KEY", "")
 INSTAGRAM_TOKEN      = os.getenv("META_ACCESS_TOKEN", "")

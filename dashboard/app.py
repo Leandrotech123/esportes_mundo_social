@@ -24,28 +24,18 @@ if os.path.exists(OUTPUTS_DIR):
 
 # ─── helpers ────────────────────────────────
 
-def _run_pipeline(limit: int = 8):
+def _run_pipeline():
     from core.fetcher import fetch_all
     from core.processor import process_and_queue
-    from core.ai_generator import generate_caption
-    from core.asset_creator import create_post_image
-
     data = fetch_all()
     process_and_queue(data)
-    pending = get_queue("pending")
-    for item in pending[:limit]:
-        if not item.get("generated_text"):
-            raw = json.loads(item.get("raw_data") or "{}")
-            text = generate_caption(item["type"], raw, item["platform"])
-            path = create_post_image({**item, "raw_data": raw})
-            update_queue_item(item["id"], {"generated_text": text, "image_path": path})
 
 
 # ─── routes ─────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    queue = get_queue("pending")
+    queue = get_queue("gerado")
     stats = get_all_queue_stats()
     games = get_games_today()
     return templates.TemplateResponse("index.html", {

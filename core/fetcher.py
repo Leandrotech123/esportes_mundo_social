@@ -1,6 +1,6 @@
 import requests
 from datetime import date, datetime
-from config import ESPN_BASE, FOOTBALL_DATA_BASE, FOOTBALL_DATA_KEY, NEWS_API_KEY, NEWS_API_BASE, LEAGUES_ESPN
+from config import ESPN_BASE, FOOTBALL_DATA_BASE, FOOTBALL_DATA_KEY, NEWS_API_KEY, NEWS_API_BASE, LEAGUES_ESPN, BALLDONTLIE_API_KEY
 from database import save_game, save_news
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; EsportesMundo/1.0)"}
@@ -63,14 +63,17 @@ def fetch_all_football_today() -> list:
 
 
 # ─────────────────────────────────────────────
-# NBA — Ball Don't Lie (sem chave, grátis)
+# NBA — Ball Don't Lie (requer API key gratuita)
 # ─────────────────────────────────────────────
 
 def fetch_nba_today() -> list:
     today = date.today().isoformat()
     url = "https://api.balldontlie.io/v1/games"
+    headers = {**HEADERS}
+    if BALLDONTLIE_API_KEY:
+        headers["Authorization"] = f"Bearer {BALLDONTLIE_API_KEY}"
     try:
-        r = requests.get(url, params={"dates[]": today}, timeout=10)
+        r = requests.get(url, params={"dates[]": today}, headers=headers, timeout=10)
         r.raise_for_status()
         games = []
         for g in r.json().get("data", []):
@@ -103,32 +106,33 @@ def fetch_nba_today() -> list:
 # ─────────────────────────────────────────────
 
 def fetch_espn_news() -> list:
-    sources = [
-        ("soccer", "news", "futebol"),
-        ("basketball", "nba/news", "nba"),
-    ]
     items = []
-    for sport, path, league in sources:
-        try:
-            r = requests.get(f"{ESPN_BASE}/{sport}/{path}", headers=HEADERS, timeout=10)
-            r.raise_for_status()
-            for a in r.json().get("articles", [])[:6]:
-                url = a.get("links", {}).get("web", {}).get("href", "")
-                title = a.get("headline", "")
-                if not title or not url:
-                    continue
-                item = {
-                    "source": "ESPN",
-                    "title": title,
-                    "description": a.get("description", ""),
-                    "url": url,
-                    "published_at": a.get("published", ""),
-                    "league": league,
-                }
-                items.append(item)
-                save_news(item)
-        except Exception as e:
-            print(f"[FETCHER] ESPN news {sport} erro: {e}")
+
+    # Futebol: endpoint /news e /scoreboard genericos nao existem na ESPN publica.
+    # Os jogos de futebol ja chegam via fetch_all_football_today() — sem duplicar aqui.
+
+    # NBA: endpoint de noticias ainda ativo
+    try:
+        r = requests.get(f"{ESPN_BASE}/basketball/nba/news", headers=HEADERS, timeout=10)
+        r.raise_for_status()
+        for a in r.json().get("articles", [])[:6]:
+            url = a.get("links", {}).get("web", {}).get("href", "")
+            title = a.get("headline", "")
+            if not title or not url:
+                continue
+            item = {
+                "source": "ESPN",
+                "title": title,
+                "description": a.get("description", ""),
+                "url": url,
+                "published_at": a.get("published", ""),
+                "league": "nba",
+            }
+            items.append(item)
+            save_news(item)
+    except Exception as e:
+        print(f"[FETCHER] ESPN news nba erro: {e}")
+
     return items
 
 
