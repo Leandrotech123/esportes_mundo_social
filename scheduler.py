@@ -11,11 +11,10 @@ def run_cycle():
     from core.asset_creator import create_post_image
     from database import get_queue, update_queue_item
 
-    print(f"\n[SCHEDULER] ▶ Ciclo — {datetime.now().strftime('%d/%m %H:%M')}")
+    print(f"\n[SCHEDULER] >> Ciclo -- {datetime.now().strftime('%d/%m %H:%M')}")
     data = fetch_all()
     count = process_and_queue(data)
 
-    # Gera imagens para itens que ainda não têm
     if count > 0:
         gerados = get_queue("gerado")
         for item in gerados[:8]:
@@ -23,9 +22,10 @@ def run_cycle():
                 raw = json.loads(item.get("raw_data") or "{}")
                 path = create_post_image({**item, "raw_data": raw})
                 update_queue_item(item["id"], {"image_path": path})
-                print(f"[SCHEDULER]   🖼 Imagem: {(item['title'] or '')[:45]}")
+                title_log = (item['title'] or '')[:45].encode('ascii', 'replace').decode()
+                print(f"[SCHEDULER]   IMG: {title_log}")
 
-    print(f"[SCHEDULER] ■ Ciclo concluído")
+    print(f"[SCHEDULER] == Ciclo concluido")
 
 
 def check_live():
@@ -33,7 +33,12 @@ def check_live():
     games = fetch_all_football_today() + fetch_nba_today()
     live = [g for g in games if g.get("status") == "live"]
     if live:
-        print(f"[SCHEDULER] ⚡ {len(live)} jogo(s) ao vivo")
+        print(f"[SCHEDULER] AO VIVO: {len(live)} jogo(s)")
+
+
+def publicar_aprovados():
+    from core.publisher import publicar_aprovados as _pub
+    _pub()
 
 
 # Coletas agendadas (horário de Brasília)
@@ -46,11 +51,15 @@ scheduler.add_job(run_cycle, "cron", hour=22, minute=30, id="night")
 # Verificação ao vivo a cada 15 min
 scheduler.add_job(check_live, "interval", minutes=15, id="live_check")
 
+# Publicação automática de aprovados — verifica a cada 1 minuto
+scheduler.add_job(publicar_aprovados, "interval", minutes=1, id="publish_approved")
+
 
 def start():
     print("[SCHEDULER] Iniciando...")
     print("[SCHEDULER] Coletas: 06:00 | 12:00 | 16:00 | 20:00 | 22:30")
     print("[SCHEDULER] Live check: a cada 15 min")
+    print("[SCHEDULER] Publicador: a cada 1 min")
     print("[SCHEDULER] Ctrl+C para parar\n")
     scheduler.start()
 

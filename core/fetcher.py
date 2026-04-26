@@ -6,6 +6,25 @@ from database import save_game, save_news
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; EsportesMundo/1.0)"}
 
 
+def _traduzir_titulo_nba(titulo: str) -> str:
+    """Traduz título em inglês para português BR usando Claude Haiku."""
+    try:
+        import anthropic, os
+        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        resp = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=120,
+            system="Você traduz títulos esportivos para português brasileiro informal. Mantenha nomes próprios, times e jogadores em inglês/original.",
+            messages=[{"role": "user", "content": (
+                f"Traduza para português brasileiro informal esse título esportivo, "
+                f"mantenha nomes próprios: {titulo}"
+            )}],
+        )
+        return resp.content[0].text.strip()
+    except Exception:
+        return titulo
+
+
 # ─────────────────────────────────────────────
 # ESPN (unofficial, sem chave)
 # ─────────────────────────────────────────────
@@ -120,6 +139,7 @@ def fetch_espn_news() -> list:
             title = a.get("headline", "")
             if not title or not url:
                 continue
+            title = _traduzir_titulo_nba(title)
             item = {
                 "source": "ESPN",
                 "title": title,

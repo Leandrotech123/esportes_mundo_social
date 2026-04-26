@@ -83,8 +83,29 @@ def init_db():
             created_at        TEXT DEFAULT (datetime('now','localtime'))
         )
     """)
+    # Migração: adiciona coluna platforms se ainda não existir
+    try:
+        c.execute("ALTER TABLE content_queue ADD COLUMN platforms TEXT DEFAULT '[]'")
+        conn.commit()
+    except Exception:
+        pass
+
     conn.commit()
     conn.close()
+
+
+def get_approved_ready() -> list:
+    """Retorna itens aprovados cujo scheduled_at já chegou."""
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT * FROM content_queue
+        WHERE status = 'approved'
+          AND scheduled_at IS NOT NULL
+          AND scheduled_at <= datetime('now', 'localtime')
+        ORDER BY scheduled_at ASC
+    """).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
 
 
 def get_cache(raw_key: str) -> dict | None:

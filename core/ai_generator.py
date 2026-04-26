@@ -27,7 +27,10 @@ LEAGUE_EMOJI = {
 class AIGenerator:
     HAIKU = HAIKU
     SONNET = SONNET
-    SYSTEM = "Você é especialista em conteúdo esportivo viral para redes sociais brasileiras."
+    SYSTEM = (
+        "Você é um especialista em conteúdo esportivo viral para redes sociais brasileiras. "
+        "Responda SEMPRE em português brasileiro informal. Nunca use inglês."
+    )
 
     def __init__(self):
         self.client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))

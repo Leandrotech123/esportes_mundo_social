@@ -56,6 +56,14 @@
   }
   .card-time { font-size: 0.72rem; color: var(--border); }
   .card-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; }
+  .sched-form { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+  .sched-form input[type="datetime-local"] {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); padding: 4px 6px; font-size: 0.72rem; max-width: 160px;
+  }
+  .platforms-icons { font-size: 0.9rem; display: flex; gap: 3px; flex-wrap: wrap; margin-top: 4px; }
+  .sched-time { font-size: 0.72rem; color: var(--accent); margin-top: 4px; }
+  .section-agendados { margin-top: 36px; }
 </style>
 {% endblock %}
 
@@ -148,20 +156,56 @@
       </div>
       <div class="card-time">{{ item.created_at }}</div>
       <div class="card-actions">
-        <form method="post" action="/approve/{{ item.id }}">
-          <button class="btn btn-approve btn-sm">✓ Aprovar</button>
+        <form method="post" action="/approve/{{ item.id }}" class="sched-form">
+          <input type="datetime-local" name="scheduled_at" title="Deixe vazio = publica em 15 min">
+          <button class="btn btn-approve btn-sm">+ Aprovar</button>
         </form>
         <form method="post" action="/reject/{{ item.id }}">
-          <button class="btn btn-reject btn-sm">✗ Rejeitar</button>
+          <button class="btn btn-reject btn-sm">x Rejeitar</button>
         </form>
-        <a href="/edit/{{ item.id }}" class="btn btn-edit btn-sm">✎ Editar</a>
+        <a href="/edit/{{ item.id }}" class="btn btn-edit btn-sm">Editar</a>
         <form method="post" action="/regenerate/{{ item.id }}">
-          <button class="btn btn-regen btn-sm" title="Regenerar com IA">⟳</button>
+          <button class="btn btn-regen btn-sm" title="Regenerar com IA">Regenerar</button>
         </form>
+      </div>
+      <div class="platforms-icons" title="Sera publicado em todas as redes">
+        📸 👤 ▶ 🎵 🎬
       </div>
     </div>
   </div>
   {% endfor %}
+</div>
+{% endif %}
+
+{% if agendados %}
+<div class="section-agendados">
+  <div class="section-title">
+    🕐 Agendados para Publicação
+    <span class="count">{{ agendados|length }}</span>
+  </div>
+  <div class="grid">
+    {% for item in agendados %}
+    <div class="card" style="opacity:0.85;border-color:var(--accent)">
+      <div class="card-body">
+        <div class="card-meta">
+          <span class="badge badge-type">{{ item.type }}</span>
+          {% if item.league %}<span class="badge badge-league">{{ item.league }}</span>{% endif %}
+        </div>
+        <div class="card-title">{{ item.title or 'Sem título' }}</div>
+        <div class="card-caption">{{ item.generated_text or '' }}</div>
+        <div class="sched-time">
+          🕐 Publica em: {{ item.scheduled_at or 'A definir' }}
+        </div>
+        <div class="platforms-icons">📸 👤 ▶ 🎵 🎬</div>
+        <div class="card-actions">
+          <form method="post" action="/reject/{{ item.id }}">
+            <button class="btn btn-reject btn-sm">x Cancelar</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
 </div>
 {% endif %}
 {% endblock %}
