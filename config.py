@@ -3,12 +3,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-FOOTBALL_DATA_KEY = os.getenv("FOOTBALL_DATA_KEY", "")
-NEWS_API_KEY = os.getenv("NEWS_API_KEY", "")
-INSTAGRAM_TOKEN = os.getenv("INSTAGRAM_TOKEN", "")
-INSTAGRAM_ACCOUNT_ID = os.getenv("INSTAGRAM_ACCOUNT_ID", "")
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
+ANTHROPIC_API_KEY    = os.getenv("ANTHROPIC_API_KEY", "")
+FOOTBALL_DATA_KEY    = os.getenv("API_FOOTBALL_KEY", "")
+NEWS_API_KEY         = os.getenv("NEWS_API_KEY", "")
+INSTAGRAM_TOKEN      = os.getenv("META_ACCESS_TOKEN", "")
+INSTAGRAM_ACCOUNT_ID = os.getenv("INSTAGRAM_BUSINESS_ID", "")
+FACEBOOK_PAGE_ID     = os.getenv("FACEBOOK_PAGE_ID", "")
+YOUTUBE_API_KEY      = os.getenv("YOUTUBE_API_KEY", "")
+TIKTOK_ACCESS_TOKEN  = os.getenv("TIKTOK_ACCESS_TOKEN", "")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ASSETS_DIR = os.path.join(BASE_DIR, "assets")
