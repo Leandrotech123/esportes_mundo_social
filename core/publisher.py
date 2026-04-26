@@ -67,21 +67,31 @@ def publish_instagram(image_path: str, caption: str) -> dict:
 
 # ─── Facebook ────────────────────────────────────────────────────────────────
 
+def _get_page_access_token(user_token: str) -> str:
+    """Troca o User/System User token pelo Page Access Token necessário para postar."""
+    r = requests.get(
+        f"https://graph.facebook.com/v19.0/{FACEBOOK_PAGE_ID}",
+        params={"fields": "access_token", "access_token": user_token},
+        timeout=15,
+    )
+    return r.json().get("access_token", user_token)
+
+
 def publish_facebook(image_path: str, caption: str) -> dict:
     from config import META_ACCESS_TOKEN
-    token = META_ACCESS_TOKEN or INSTAGRAM_TOKEN
-    if not token or not FACEBOOK_PAGE_ID:
+    user_token = META_ACCESS_TOKEN or INSTAGRAM_TOKEN
+    if not user_token or not FACEBOOK_PAGE_ID:
         return {"success": False, "error": "Credenciais Facebook nao configuradas no .env"}
     if not image_path or not os.path.exists(image_path):
         return {"success": False, "error": "Sem imagem local para upload"}
     try:
-        with open(image_path, "rb") as f:
-            r = requests.post(
-                f"https://graph.facebook.com/v19.0/{FACEBOOK_PAGE_ID}/photos",
-                files={"source": f},
-                data={"caption": caption, "access_token": token},
-                timeout=30,
-            )
+        page_token = _get_page_access_token(user_token)
+        image_url = upload_imagem_publica(image_path)
+        r = requests.post(
+            f"https://graph.facebook.com/v19.0/{FACEBOOK_PAGE_ID}/photos",
+            data={"url": image_url, "caption": caption, "access_token": page_token},
+            timeout=30,
+        )
         result = r.json()
         if "id" in result:
             return {"success": True, "result": result}
@@ -193,3 +203,8 @@ def mark_published(item_id: int, platform: str):
         "published_at": datetime.now().isoformat(),
     })
     print(f"[PUBLISHER] Item {item_id} publicado em {platform}")
+
+
+class Publisher:
+    def publicar_aprovados(self):
+        return publicar_aprovados()
