@@ -80,6 +80,16 @@ class AIGenerator:
 
     def _variaveis_de_evento(self, evento: dict) -> dict:
         liga = evento.get("league") or evento.get("liga", "")
+
+        start_time = evento.get("start_time", "")
+        data_jogo = ""
+        if start_time:
+            try:
+                from datetime import datetime as _dt
+                data_jogo = _dt.strptime(str(start_time)[:10], "%Y-%m-%d").strftime("%d/%m/%Y")
+            except Exception:
+                pass
+
         return {
             "titulo":     evento.get("titulo") or evento.get("title", ""),
             "liga_nome":  LEAGUE_LABEL.get(liga, liga),
@@ -88,7 +98,9 @@ class AIGenerator:
             "destaque":   evento.get("destaque") or evento.get("context", ""),
             "time_casa":  evento.get("home_team", ""),
             "time_fora":  evento.get("away_team", ""),
-            "horario":    evento.get("start_time", ""),
+            "horario":    start_time,
+            "data_jogo":  data_jogo,
+            "data_hoje":  datetime.now().strftime("%d/%m/%Y"),
         }
 
     def gerar_conteudo_completo(self, evento: dict) -> dict:

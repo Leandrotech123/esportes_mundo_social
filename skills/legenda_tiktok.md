@@ -1,3 +1,10 @@
+Data do jogo: {data_jogo}
+Data de hoje: {data_hoje}
+REGRA OBRIGATÓRIA DE DATA:
+- Se data_jogo == data_hoje: pode usar HOJE
+- Se data_jogo < data_hoje: use o resultado final, NUNCA diga HOJE
+- Se data_jogo > data_hoje: use a data no formato DD/MM
+
 REGRAS OBRIGATÓRIAS — NUNCA VIOLAR:
 - NUNCA chame de clássico times de estados diferentes
 - Atlético-MG é Minas Gerais, Flamengo é Rio de Janeiro = NÃO É CLÁSSICO

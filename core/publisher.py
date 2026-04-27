@@ -173,13 +173,16 @@ def _publicar_item(item: dict):
     return results
 
 
-def publicar_aprovados():
+def publicar_aprovados() -> dict:
     """Verifica itens aprovados com scheduled_at vencido e publica em todas as redes."""
     itens = get_approved_ready()
     if not itens:
-        return
+        print("[PUBLISHER] Nenhum item aprovado pronto para publicar.")
+        return {"ready": 0, "published": [], "errors": []}
 
     print(f"[PUBLISHER] {len(itens)} item(s) para publicar")
+    published = []
+    errors = []
     for item in itens:
         try:
             results = _publicar_item(item)
@@ -193,8 +196,11 @@ def publicar_aprovados():
             for plat, r in results.items():
                 if not r.get("success"):
                     print(f"  [{plat}] erro: {r.get('error')}")
+            published.append({"id": item["id"], "ok": ok, "fail": fail})
         except Exception as e:
             print(f"[PUBLISHER] Erro item {item['id']}: {e}")
+            errors.append({"id": item["id"], "error": str(e)})
+    return {"ready": len(itens), "published": published, "errors": errors}
 
 
 def mark_published(item_id: int, platform: str):

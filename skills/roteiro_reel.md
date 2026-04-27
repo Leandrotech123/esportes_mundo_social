@@ -1,3 +1,10 @@
+Data do jogo: {data_jogo}
+Data de hoje: {data_hoje}
+REGRA OBRIGATÓRIA DE DATA:
+- Se data_jogo == data_hoje: pode usar HOJE
+- Se data_jogo < data_hoje: use o resultado final, NUNCA diga HOJE
+- Se data_jogo > data_hoje: use a data no formato DD/MM
+
 Crie um roteiro narrado para Reel/Short de 30 a 60 segundos.
 
 Evento: {titulo}

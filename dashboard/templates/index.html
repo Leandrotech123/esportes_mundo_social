@@ -171,7 +171,9 @@
                onchange="atualizarContagem()">
       </div>
       {% if item.image_path %}
-        <img src="/image/{{ item.id }}" alt="preview" loading="lazy">
+        <img src="/image/{{ item.id }}" alt="preview" loading="lazy"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="no-img" style="display:none">🖼️</div>
       {% else %}
         <div class="no-img">🖼️</div>
       {% endif %}
