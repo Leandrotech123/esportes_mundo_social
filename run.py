@@ -64,7 +64,15 @@ def _mostrar_ip_local():
     print(f"{'='*50}\n")
 
 
+def _run_server():
+    from dashboard.app import app
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="warning")
+
+
 def main():
+    import time
+    import logging
+
     init_db()
     print(BANNER)
 
@@ -74,8 +82,17 @@ def main():
     t = threading.Thread(target=_run_scheduler, daemon=True, name="scheduler")
     t.start()
 
-    from dashboard.app import app
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="warning")
+    while True:
+        try:
+            _run_server()
+            break  # saída limpa (Ctrl+C ou shutdown normal)
+        except OSError as e:
+            if getattr(e, "winerror", None) == 64:
+                logging.warning("Rede perdida — reconectando em 10s...")
+                print("[WATCHDOG] Rede perdida — reconectando em 10s...")
+                time.sleep(10)
+            else:
+                raise
 
 
 if __name__ == "__main__":
