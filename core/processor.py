@@ -113,6 +113,7 @@ def process_and_queue(data: dict) -> int:
     if added_items:
         try:
             from core.ai_generator import AIGenerator
+            from core.asset_creator import create_post_image
             ai = AIGenerator()
             for i in range(0, len(added_items), 5):
                 batch = added_items[i:i + 5]
@@ -126,9 +127,15 @@ def process_and_queue(data: dict) -> int:
                     }
                     try:
                         resultado = ai.gerar_conteudo_completo(evento)
+                        img_path = ""
+                        try:
+                            img_path = create_post_image({**item, "raw_data": raw})
+                        except Exception as ie:
+                            print(f"[PROCESSOR] AVISO imagem: {ie}")
                         update_queue_item(item["qid"], {
                             "status": "gerado",
                             "generated_text": resultado.get("legenda_instagram", ""),
+                            "image_path": img_path,
                         })
                         title_log = (item.get('title', ''))[:50].encode('ascii', 'replace').decode()
                         print(f"[PROCESSOR] OK {title_log}")

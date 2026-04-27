@@ -3,7 +3,7 @@ import io
 import requests
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
-from config import ASSETS_DIR, OUTPUTS_DIR, BRAND_COLOR_BG, BRAND_COLOR_ACCENT, BRAND_COLOR_TEXT, BRAND_COLOR_SECONDARY
+from config import ASSETS_DIR, OUTPUTS_DIR, BASE_DIR, BRAND_COLOR_BG, BRAND_COLOR_ACCENT, BRAND_COLOR_TEXT, BRAND_COLOR_SECONDARY
 from core.ai_generator import generate_image_prompt
 
 POSTS_DIR = os.path.join(OUTPUTS_DIR, "posts")
@@ -23,6 +23,11 @@ os.makedirs(POSTS_DIR, exist_ok=True)
 os.makedirs(STORIES_DIR, exist_ok=True)
 
 MIN_IMAGE_BYTES = 10_000  # imagens menores que 10KB são consideradas inválidas
+
+
+def _relpath(abs_path: str) -> str:
+    """Converte caminho absoluto em relativo ao BASE_DIR com barras normais."""
+    return os.path.relpath(abs_path, BASE_DIR).replace("\\", "/")
 
 
 # ─────────────────────────────────────────────
@@ -336,7 +341,7 @@ class AssetCreator:
         path = os.path.join(POSTS_DIR, f"{slug}.jpg")
         img.convert("RGB").save(path, "JPEG", quality=92)
         print(f"[ASSET] Jogo salvo: {path}")
-        return path
+        return _relpath(path)
 
     def criar_imagem_noticia(self, titulo: str, evento_id: str) -> str:
         os.makedirs(POSTS_DIR, exist_ok=True)
@@ -378,7 +383,7 @@ class AssetCreator:
         path = os.path.join(POSTS_DIR, f"news_{evento_id}.jpg")
         img.convert("RGB").save(path, "JPEG", quality=92)
         print(f"[ASSET] Noticia salva: {path}")
-        return path
+        return _relpath(path)
 
 
 def create_post_image(content: dict) -> str:
@@ -402,4 +407,4 @@ def create_post_image(content: dict) -> str:
     path = os.path.join(out_dir, filename)
     img.convert("RGB").save(path, "JPEG", quality=92)
     print(f"[ASSET] Criado: {filename}")
-    return path
+    return _relpath(path)

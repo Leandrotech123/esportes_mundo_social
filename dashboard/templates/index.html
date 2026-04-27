@@ -171,7 +171,8 @@
                onchange="atualizarContagem()">
       </div>
       {% if item.image_path %}
-        <img src="/image/{{ item.id }}" alt="preview" loading="lazy"
+        {% set img_fname = item.image_path.split('/')[-1].split('\\')[-1] %}
+        <img src="/outputs/posts/{{ img_fname }}" alt="preview" loading="lazy"
              onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
         <div class="no-img" style="display:none">🖼️</div>
       {% else %}

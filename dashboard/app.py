@@ -94,8 +94,12 @@ async def edit_save(item_id: int, generated_text: str = Form(...)):
 @app.get("/image/{item_id}")
 async def serve_image(item_id: int):
     item = get_queue_item(item_id)
-    if item and item.get("image_path") and os.path.exists(item["image_path"]):
-        return FileResponse(item["image_path"])
+    if item and item.get("image_path"):
+        img_path = item["image_path"]
+        if not os.path.isabs(img_path):
+            img_path = os.path.join(BASE_DIR, img_path.replace("/", os.sep))
+        if os.path.exists(img_path):
+            return FileResponse(img_path)
     return HTMLResponse("", status_code=404)
 
 
