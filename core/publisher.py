@@ -1,6 +1,7 @@
 import os
 import json
 import shutil
+import time
 import requests
 import cloudinary
 import cloudinary.uploader
@@ -39,6 +40,24 @@ def upload_imagem_publica(caminho_local: str) -> str:
 
 # ─── Instagram ───────────────────────────────────────────────────────────────
 
+def _aguardar_container_pronto(creation_id: str, token: str, max_espera: int = 60) -> bool:
+    """Aguarda até o container de mídia do Instagram estar em status FINISHED."""
+    for _ in range(max_espera // 5):
+        r = requests.get(
+            f"https://graph.facebook.com/v19.0/{creation_id}?fields=status_code&access_token={token}",
+            timeout=15,
+        )
+        status = r.json().get("status_code", "")
+        if status == "FINISHED":
+            return True
+        if status == "ERROR":
+            print(f"[PUBLISHER] Container {creation_id} com ERROR no processamento")
+            return False
+        time.sleep(5)
+    print(f"[PUBLISHER] Timeout aguardando container {creation_id}")
+    return False
+
+
 def publish_instagram(image_path: str, caption: str) -> dict:
     if not INSTAGRAM_TOKEN or not INSTAGRAM_ACCOUNT_ID:
         return {"success": False, "error": "Credenciais Instagram nao configuradas no .env"}
@@ -54,12 +73,16 @@ def publish_instagram(image_path: str, caption: str) -> dict:
         cid = r.json().get("id")
         if not cid:
             return {"success": False, "error": r.json()}
+        if not _aguardar_container_pronto(cid, INSTAGRAM_TOKEN):
+            return {"success": False, "error": f"Container {cid} nao ficou FINISHED a tempo"}
         r2 = requests.post(
             f"https://graph.facebook.com/v19.0/{INSTAGRAM_ACCOUNT_ID}/media_publish",
             data={"creation_id": cid, "access_token": INSTAGRAM_TOKEN},
             timeout=30,
         )
         result = r2.json()
+        if "id" in result:
+            print(f"[PUBLISHER] Instagram publicado — post_id={result['id']}")
         return {"success": "id" in result, "result": result}
     except Exception as e:
         return {"success": False, "error": str(e)}
