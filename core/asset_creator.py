@@ -4,7 +4,6 @@ import requests
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
 from config import ASSETS_DIR, OUTPUTS_DIR, BASE_DIR, BRAND_COLOR_BG, BRAND_COLOR_ACCENT, BRAND_COLOR_TEXT, BRAND_COLOR_SECONDARY
-from core.ai_generator import generate_image_prompt
 
 POSTS_DIR = os.path.join(OUTPUTS_DIR, "posts")
 STORIES_DIR = os.path.join(OUTPUTS_DIR, "stories")
@@ -86,40 +85,6 @@ def _background(prompt: str, w: int, h: int) -> Image.Image:
     return Image.new("RGB", (w, h), BRAND_COLOR_BG)
 
 
-# ─────────────────────────────────────────────
-# Prompt factory — nunca usa título direto
-# ─────────────────────────────────────────────
-
-def _build_visual_prompts(titulo: str, evento_id: str, home: str = "", away: str = "", liga: str = "") -> list:
-    t = titulo.lower()
-    eid = (evento_id or "").lower()
-    is_nba = "nba" in t or "nba" in eid or "nba" in liga.lower() or "basquete" in t or "basketball" in t
-
-    if home and away:
-        if is_nba:
-            return [
-                f"professional basketball NBA game {home} versus {away} arena crowd action photo realistic",
-                f"professional basketball NBA {home} vs {away} arena crowd action realistic photo",
-                "professional basketball NBA arena crowd action photo realistic",
-            ]
-        return [
-            f"professional soccer match {home} versus {away} stadium crowd action photo realistic",
-            f"professional soccer football {home} vs {away} stadium crowd action realistic photo",
-            "professional soccer football stadium crowd match action photo realistic",
-        ]
-
-    if is_nba:
-        return [
-            "professional basketball NBA arena crowd action photo realistic",
-            "professional basketball NBA game arena crowd action realistic photo",
-            "basketball NBA arena crowd players action photo realistic",
-        ]
-
-    return [
-        "professional soccer football stadium crowd match action photo realistic",
-        "professional soccer football match stadium crowd action realistic photo",
-        "soccer football stadium crowd match action photo realistic",
-    ]
 
 
 # ─────────────────────────────────────────────
@@ -211,6 +176,23 @@ def _paste_logo(img: Image.Image):
 
 class AssetCreator:
     W, H = 1080, 1080
+
+    def _build_pollinations_prompt(self, title: str, league: str,
+                                   home_team: str = "", away_team: str = "") -> str:
+        league_s = str(league).lower()
+        if any(x in league_s for x in ["nba", "basketball", "basquete"]):
+            if home_team and away_team:
+                prompt = f"NBA basketball game {home_team} vs {away_team} players action shot arena crowd realistic photo 4k"
+            else:
+                prompt = "NBA basketball game players dunking action shot arena crowd realistic photo 4k"
+        elif any(x in league_s for x in ["bra", "eng", "esp", "ita", "uefa", "champions", "premier", "liga", "serie"]):
+            if home_team and away_team:
+                prompt = f"soccer football match {home_team} vs {away_team} stadium crowd action realistic photo 4k"
+            else:
+                prompt = "soccer football match stadium crowd action realistic photo 4k"
+        else:
+            prompt = "sports match stadium crowd action realistic photo 4k"
+        return prompt.replace("  ", " ").strip()
 
     def _gradient_bg(self) -> Image.Image:
         img = Image.new("RGB", (self.W, self.H), BRAND_COLOR_BG)
@@ -368,8 +350,8 @@ class AssetCreator:
                              home: str = "", away: str = "", liga: str = "") -> str:
         os.makedirs(POSTS_DIR, exist_ok=True)
 
-        prompts = _build_visual_prompts(titulo, evento_id, home=home, away=away, liga=liga)
-        img_result = _fetch_from_pollinations(prompts, self.W, self.H)
+        prompt = self._build_pollinations_prompt("", liga, home_team=home, away_team=away)
+        img_result = _fetch_from_pollinations([prompt, prompt, "sports stadium crowd action realistic photo 4k"], self.W, self.H)
 
         if img_result:
             img = img_result.convert("RGBA")
@@ -413,13 +395,13 @@ def create_post_image(content: dict) -> str:
     size = (1080, 1920) if is_story else (1080, 1080)
     out_dir = STORIES_DIR if is_story else POSTS_DIR
 
-    titulo = raw.get("title", content.get("title", ""))
-    evento_id = str(raw.get("event_id", raw.get("id", "")))
     home = raw.get("home_team", "")
     away = raw.get("away_team", "")
     liga = raw.get("league", raw.get("liga", ""))
-    prompts = _build_visual_prompts(titulo, evento_id, home=home, away=away, liga=liga)
-    img = _fetch_from_pollinations(prompts, *size) or Image.new("RGB", size, BRAND_COLOR_BG)
+    ac = AssetCreator()
+    prompt = ac._build_pollinations_prompt("", liga, home_team=home, away_team=away)
+    img = _fetch_from_pollinations([prompt, prompt, "sports stadium crowd action realistic photo 4k"], *size) \
+          or Image.new("RGB", size, BRAND_COLOR_BG)
 
     if "home_team" in raw:
         _draw_score_card(img, raw)
