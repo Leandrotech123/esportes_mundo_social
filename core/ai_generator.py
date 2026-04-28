@@ -2,6 +2,7 @@ import os
 import json
 import base64
 import anthropic
+from datetime import datetime
 
 HAIKU = "claude-haiku-4-5-20251001"
 SONNET = "claude-sonnet-4-5"

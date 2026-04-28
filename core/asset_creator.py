@@ -67,7 +67,7 @@ def _fetch_from_pollinations(prompts: list, w: int, h: int) -> "Image.Image | No
         safe = prompt.replace(" ", "%20")[:200]
         url = f"https://image.pollinations.ai/prompt/{safe}?width={w}&height={h}&nologo=true&seed={seed}"
         try:
-            r = requests.get(url, timeout=45)
+            r = requests.get(url, timeout=15)
             if r.status_code == 200:
                 if len(r.content) >= MIN_IMAGE_BYTES:
                     return Image.open(io.BytesIO(r.content)).convert("RGB").resize((w, h))
@@ -90,39 +90,35 @@ def _background(prompt: str, w: int, h: int) -> Image.Image:
 # Prompt factory — nunca usa título direto
 # ─────────────────────────────────────────────
 
-def _build_visual_prompts(titulo: str, evento_id: str, home: str = "", away: str = "") -> list:
+def _build_visual_prompts(titulo: str, evento_id: str, home: str = "", away: str = "", liga: str = "") -> list:
     t = titulo.lower()
     eid = (evento_id or "").lower()
+    is_nba = "nba" in t or "nba" in eid or "nba" in liga.lower() or "basquete" in t or "basketball" in t
 
     if home and away:
+        if is_nba:
+            return [
+                f"professional basketball NBA game {home} versus {away} arena crowd action photo realistic",
+                f"professional basketball NBA {home} vs {away} arena crowd action realistic photo",
+                "professional basketball NBA arena crowd action photo realistic",
+            ]
         return [
-            f"soccer football {home} vs {away} match photo stadium crowd professional",
-            f"soccer football match {home} {away} stadium crowd action professional",
-            "soccer football match stadium crowd action professional photo",
+            f"professional soccer match {home} versus {away} stadium crowd action photo realistic",
+            f"professional soccer football {home} vs {away} stadium crowd action realistic photo",
+            "professional soccer football stadium crowd match action photo realistic",
         ]
 
-    if "nba" in t or "nba" in eid or "basquete" in t or "basketball" in t:
-        teams = " ".join(w for w in titulo.split() if w and w[0].isupper())[:60]
+    if is_nba:
         return [
-            f"basketball NBA {teams} game action photo arena crowd professional",
-            "basketball NBA game action photo arena crowd professional",
-            "sports basketball arena action professional photo",
-        ]
-
-    if any(k in t for k in ["futebol", "copa", "campeonato", "jogo", "gol", "fifa", "liga", "soccer",
-                             "premier", "champions", "brasileirao", "brasileir", "serie a", "rodada",
-                             "classico", "clássico", "bundesliga", "laliga", "la liga"]):
-        teams = " ".join(w for w in titulo.split() if w and w[0].isupper())[:60]
-        return [
-            f"soccer football {teams} match photo stadium crowd professional",
-            "soccer football match photo stadium crowd professional",
-            "sports soccer stadium action professional photo",
+            "professional basketball NBA arena crowd action photo realistic",
+            "professional basketball NBA game arena crowd action realistic photo",
+            "basketball NBA arena crowd players action photo realistic",
         ]
 
     return [
-        "sports photo professional stadium athlete action",
-        "sports event photo professional athlete stadium crowd",
-        "sports professional photo action stadium",
+        "professional soccer football stadium crowd match action photo realistic",
+        "professional soccer football match stadium crowd action realistic photo",
+        "soccer football stadium crowd match action photo realistic",
     ]
 
 
@@ -227,26 +223,51 @@ class AssetCreator:
             draw.line([(0, y), (self.W, y)], fill=(r, g, b))
         return img
 
-    def _pillow_fallback(self, titulo: str) -> Image.Image:
-        """Gera imagem local com gradiente + texto quando Pollinations falha."""
+    def _pillow_fallback(self, titulo: str, home: str = "", away: str = "", liga: str = "") -> Image.Image:
+        """Gera imagem local com gradiente escuro + badges dos times quando Pollinations falha."""
         img = self._gradient_bg().convert("RGBA")
         draw = ImageDraw.Draw(img)
-        # accent stripe top
+
         draw.rectangle([0, 0, self.W, 8], fill=BRAND_COLOR_ACCENT)
-        # label
         draw.text((self.W // 2, 60), "ESPORTES MUNDO",
                   font=_font(44, False), fill=BRAND_COLOR_ACCENT, anchor="mm")
-        # title box at bottom 20%
-        box_top = int(self.H * 0.80)
-        overlay = Image.new("RGBA", (self.W, self.H - box_top), (0, 0, 0, 0))
-        ImageDraw.Draw(overlay).rectangle(
-            [0, 0, self.W, self.H - box_top], fill=(0, 0, 0, 200)
-        )
-        img.paste(overlay, (0, box_top), overlay)
-        lines = _wrap(titulo, 26)
-        for i, line in enumerate(lines[:3]):
-            draw.text((self.W // 2, box_top + 40 + i * 56), line,
-                      font=_font(44), fill=(255, 255, 255, 255), anchor="mm")
+
+        if home and away:
+            badge_size = 200
+            badge_y = 280
+
+            home_badge = self._initials_badge(home, badge_size)
+            img.paste(home_badge, (self.W // 4 - badge_size // 2, badge_y), home_badge)
+
+            away_badge = self._initials_badge(away, badge_size)
+            img.paste(away_badge, (3 * self.W // 4 - badge_size // 2, badge_y), away_badge)
+
+            name_y = badge_y + badge_size + 30
+            draw.text((self.W // 4, name_y), home.upper(),
+                      font=_font(48), fill=BRAND_COLOR_TEXT, anchor="mm")
+            draw.text((3 * self.W // 4, name_y), away.upper(),
+                      font=_font(48), fill=BRAND_COLOR_TEXT, anchor="mm")
+
+            vs_y = badge_y + badge_size // 2
+            draw.text((self.W // 2, vs_y), "VS",
+                      font=_font(110), fill=BRAND_COLOR_TEXT, anchor="mm")
+        else:
+            box_top = int(self.H * 0.78)
+            overlay = Image.new("RGBA", (self.W, self.H - box_top), (0, 0, 0, 0))
+            ImageDraw.Draw(overlay).rectangle(
+                [0, 0, self.W, self.H - box_top], fill=(0, 0, 0, 210)
+            )
+            img.paste(overlay, (0, box_top), overlay)
+            lines = _wrap(titulo, 26)
+            for i, line in enumerate(lines[:3]):
+                draw.text((self.W // 2, box_top + 40 + i * 56), line,
+                          font=_font(44), fill=(255, 255, 255, 255), anchor="mm")
+
+        bar_h = 72
+        draw.rectangle([0, self.H - bar_h, self.W, self.H], fill=BRAND_COLOR_ACCENT)
+        draw.text((self.W // 2, self.H - bar_h + bar_h // 2), "@esportes.mundo_",
+                  font=_font(36, False), fill=BRAND_COLOR_TEXT, anchor="mm")
+
         return img
 
     def _fetch_shield(self, team_id) -> "Image.Image | None":
@@ -343,18 +364,18 @@ class AssetCreator:
         print(f"[ASSET] Jogo salvo: {path}")
         return _relpath(path)
 
-    def criar_imagem_noticia(self, titulo: str, evento_id: str) -> str:
+    def criar_imagem_noticia(self, titulo: str, evento_id: str,
+                             home: str = "", away: str = "", liga: str = "") -> str:
         os.makedirs(POSTS_DIR, exist_ok=True)
 
-        # Prompt baseado no tipo de conteúdo — NUNCA usa o título direto no Pollinations
-        prompts = _build_visual_prompts(titulo, evento_id)
+        prompts = _build_visual_prompts(titulo, evento_id, home=home, away=away, liga=liga)
         img_result = _fetch_from_pollinations(prompts, self.W, self.H)
 
         if img_result:
             img = img_result.convert("RGBA")
         else:
             print(f"[ASSET] Pollinations falhou nas 3 tentativas — usando fallback Pillow")
-            img = self._pillow_fallback(titulo).convert("RGBA")
+            img = self._pillow_fallback(titulo, home=home, away=away, liga=liga).convert("RGBA")
 
         # Caixa preta semitransparente nos últimos 20% da imagem
         box_top = int(self.H * 0.80)
@@ -392,8 +413,13 @@ def create_post_image(content: dict) -> str:
     size = (1080, 1920) if is_story else (1080, 1080)
     out_dir = STORIES_DIR if is_story else POSTS_DIR
 
-    vis_prompt = generate_image_prompt(raw)
-    img = _background(vis_prompt, *size)
+    titulo = raw.get("title", content.get("title", ""))
+    evento_id = str(raw.get("event_id", raw.get("id", "")))
+    home = raw.get("home_team", "")
+    away = raw.get("away_team", "")
+    liga = raw.get("league", raw.get("liga", ""))
+    prompts = _build_visual_prompts(titulo, evento_id, home=home, away=away, liga=liga)
+    img = _fetch_from_pollinations(prompts, *size) or Image.new("RGB", size, BRAND_COLOR_BG)
 
     if "home_team" in raw:
         _draw_score_card(img, raw)
@@ -402,7 +428,8 @@ def create_post_image(content: dict) -> str:
 
     _paste_logo(img)
 
-    slug = (content.get("title") or "post")[:28].replace(" ", "_").replace("/", "-")
+    raw_slug = (content.get("title") or "post")[:40]
+    slug = "".join(c if c.isascii() and (c.isalnum() or c in " _-") else "_" for c in raw_slug).strip("_").replace(" ", "_")[:28]
     filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{slug}.jpg"
     path = os.path.join(out_dir, filename)
     img.convert("RGB").save(path, "JPEG", quality=92)
