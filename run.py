@@ -3,10 +3,14 @@ run.py — Ponto de entrada do sistema EsportesMundo Social
 Uso: python run.py
 """
 import os
+import sys
 import threading
 import uvicorn
 from dotenv import load_dotenv
 from database import init_db
+
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 load_dotenv()
 
@@ -41,12 +45,23 @@ def _start_ngrok():
     try:
         from pyngrok import ngrok as pyngrok_tunnel
         pyngrok_tunnel.set_auth_token(ngrok_token)
+        for t in pyngrok_tunnel.get_tunnels():
+            try:
+                pyngrok_tunnel.disconnect(t.public_url)
+            except Exception:
+                pass
         tunnel = pyngrok_tunnel.connect(8000)
-        print(f"\n URL EXTERNA (acesso de qualquer lugar):")
-        print(f" {tunnel.public_url}")
-        print(f" Compartilhe esse link para acessar de qualquer rede!\n")
+        print(f"\n URL EXTERNA: {tunnel.public_url}\n")
     except Exception as e:
-        print(f"[NGROK] Erro ao iniciar tunnel: {e}")
+        err = str(e)
+        # ERR_NGROK_334: túnel ainda ativo no servidor — extrai a URL existente
+        import re
+        match = re.search(r"https://[\w\-]+\.ngrok[\w\-\.]+", err)
+        if match:
+            print(f"\n URL EXTERNA (sessão anterior ativa): {match.group(0)}")
+            print(f" (reinicie em ~1 minuto para renovar o túnel)\n")
+        else:
+            print(f"[NGROK] Aviso: {err[:120]}")
 
 
 def _mostrar_ip_local():
@@ -77,10 +92,11 @@ def main():
     print(BANNER)
 
     _mostrar_ip_local()
-    _start_ngrok()
 
     t = threading.Thread(target=_run_scheduler, daemon=True, name="scheduler")
     t.start()
+
+    threading.Thread(target=_start_ngrok, daemon=True, name="ngrok").start()
 
     while True:
         try:
